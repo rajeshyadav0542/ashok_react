@@ -1,0 +1,5 @@
+{
+  "name": "Pharma Omnichannel Measurement Catalog",
+  "description": "An interactive catalog for exploring Pharma-specific Omnichannel Key Performance Indicators (KPIs), mapped to personas and business questions. Includes an engagement scoring sandbox and a demo dashboard.",
+  "requestFramePermissions": []
+}
