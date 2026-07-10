@@ -168,7 +168,7 @@ const DQRules: React.FC<DQRulesProps> = ({ onRuleSelect }) => {
             <tr className="text-left text-slate-600">
               <th className="px-4 py-3 font-semibold w-16">#</th>
               <th className="px-4 py-3 font-semibold">DQ Rule Type</th>
-              <th className="px-4 py-3 font-semibold">Attribute Name</th>
+              <th className="px-4 py-3 font-semibold">Attribute Name</th> 
               <th className="px-4 py-3 font-semibold">Check Description</th>
               <th className="px-4 py-3 font-semibold w-24">Actions</th>
             </tr>

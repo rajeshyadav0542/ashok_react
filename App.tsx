@@ -32,6 +32,7 @@ import PersonaMapping from './src/components/PersonaKBQ'
 import * as XLSX from "xlsx";
 import KpiGapAnalysis from "./src/components/KPI-Analysis";
 import KpiCatalogTable from "./src/components/KPI-catalog";
+import DashboardPage from "./src/components/new-dashboard";
 
 import DQRules from "./src/components/DQRules";
 
@@ -581,6 +582,7 @@ interface GapAnalysisRow {
             <TabsTrigger value="dq-rules"><ShieldCheck className="h-4 w-4 mr-2"/>DQ Rules</TabsTrigger>
             <TabsTrigger value="ces"><Gauge className="h-4 w-4 mr-2"/>Engagement Scoring</TabsTrigger>
             <TabsTrigger value="dashboard"><BarChart3 className="h-4 w-4 mr-2"/>Demo Dashboard</TabsTrigger>
+            <TabsTrigger value="new-dashboard"><BarChart3 className="h-4 w-4 mr-2"/>New Dashboard</TabsTrigger>
             <TabsTrigger value="bench"><BookOpen className="h-4 w-4 mr-2"/>Benchmarks</TabsTrigger>
             <TabsTrigger value="govern"><ShieldCheck className="h-4 w-4 mr-2"/>Governance</TabsTrigger>
           </TabsList>
@@ -656,6 +658,7 @@ interface GapAnalysisRow {
           
           <TabsContent value="ces"><Section title="Unified Customer Engagement Scoring (CES)" icon={Gauge}><p className="text-sm text-slate-600 mb-2">Composite 0–100 score rolling up weighted, capped actions across channels (web, email, social/peer, events, field, EHR, paid). Designed to prioritize high-intent behavior and prevent gaming. Identity: NPI/hashed; refresh weekly; clip to [0,100].</p><CESandbox /></Section></TabsContent>
           <TabsContent value="dashboard"><DemoDashboard /></TabsContent>
+          <TabsContent value="new-dashboard"><DashboardPage /></TabsContent>
 
           <TabsContent value="bench">
             <Card><CardHeader><CardTitle className="text-base text-[#003D7C]">Industry Benchmarks (orientation)</CardTitle></CardHeader>
