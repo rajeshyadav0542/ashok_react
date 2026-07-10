@@ -465,7 +465,7 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
             </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[1fr_220px]">
+          <div className="grid gap-6">
             <div className="space-y-2">
               <label className="text-sm font-semibold text-slate-700">Outlier removal method</label>
               <select
@@ -478,8 +478,8 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
                 <option value="1*SD">1*SD</option>
               </select>
             </div>
-            <div className="flex items-end">
-              <Button type="submit" className="w-full">Submit</Button>
+            <div className="flex items-start">
+              <Button type="submit" className="">Submit</Button>
             </div>
           </div>
 

@@ -9,6 +9,7 @@ import ControlForm from "../control-form";
 const DashboardPage: React.FC = () => {
   const controlFormRef = useRef<HTMLDivElement | null>(null);
   const [isControlFormOpen, setIsControlFormOpen] = useState(false);
+  const [showOnlyControlForm, setShowOnlyControlForm] = useState(false);
 
   const handleOpenControlForm = () => {
     setIsControlFormOpen(true);
@@ -16,6 +17,18 @@ const DashboardPage: React.FC = () => {
       controlFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   };
+
+  const handleOpenControlFormFull = () => {
+    setShowOnlyControlForm(true);
+  };
+
+  if (showOnlyControlForm) {
+    return (
+      <div className="space-y-6">
+        <ControlForm onClose={() => setShowOnlyControlForm(false)} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -33,7 +46,7 @@ const DashboardPage: React.FC = () => {
               <Sparkles className="h-4 w-4 text-[#003D7C]" />
               <span>Based on behavioral segment outcomes</span>
             </div>
-            <Button onClick={handleOpenControlForm} variant="outline" size="sm" className="flex items-center gap-2">
+            <Button onClick={handleOpenControlFormFull} variant="outline" size="sm" className="flex items-center gap-2">
               <FileDown className="h-4 w-4" />
               Export File
             </Button>
