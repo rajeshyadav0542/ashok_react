@@ -128,6 +128,7 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
   const [submissionSummary, setSubmissionSummary] = useState<string>("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const dataPrepInputRef = useRef<HTMLInputElement | null>(null);
   const metaInputRef = useRef<HTMLInputElement | null>(null);
@@ -264,7 +265,7 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
     if (mmxInputRef.current) mmxInputRef.current.value = "";
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     if (!validateForm()) {
@@ -272,17 +273,37 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
       return;
     }
 
-    const selectedSegments = formData.balancingVariables
-      .map((key) => metaConfig.segments.find((option) => option.key === key)?.label || key)
-      .join(", ");
-    const selectedSales = formData.salesMetrics
-      .map((key) => metaConfig.sales.find((option) => option.key === key)?.label || key)
-      .join(", ");
+    setIsSubmitting(true);
+    setSubmissionSummary("Saving campaign control configuration...");
 
-    const successMessage = `Control configuration submitted for ${formData.approach}. Campaign ${formData.campaignStart || "-"} to ${formData.campaignEnd || "-"}. Balancing variables: ${selectedSegments || "None"}. Sales metrics: ${selectedSales || "None"}.`;
-    setSubmissionSummary(successMessage);
-    setShowSuccessPopup(true);
-    resetForm();
+    try {
+      const response = await fetch("http://localhost:8000/api/campaign-control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(errorBody || "Unable to save form data.");
+      }
+
+      const selectedSegments = formData.balancingVariables
+        .map((key) => metaConfig.segments.find((option) => option.key === key)?.label || key)
+        .join(", ");
+      const selectedSales = formData.salesMetrics
+        .map((key) => metaConfig.sales.find((option) => option.key === key)?.label || key)
+        .join(", ");
+
+      const successMessage = `Control configuration submitted for ${formData.approach}. Campaign ${formData.campaignStart || "-"} to ${formData.campaignEnd || "-"}. Balancing variables: ${selectedSegments || "None"}. Sales metrics: ${selectedSales || "None"}.`;
+      setSubmissionSummary(successMessage);
+      setShowSuccessPopup(true);
+      resetForm();
+    } catch (error) {
+      setSubmissionSummary(`Unable to save control configuration. ${error instanceof Error ? error.message : "Please try again."}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const activityEntries = useMemo(() => metaConfig.activities, [metaConfig.activities]);
@@ -479,7 +500,9 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
               </select>
             </div>
             <div className="flex items-start">
-              <Button type="submit" className="">Submit</Button>
+              <Button type="submit" className="" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting..." : "Submit"}
+              </Button>
             </div>
           </div>
 
