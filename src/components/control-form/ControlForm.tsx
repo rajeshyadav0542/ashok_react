@@ -16,14 +16,23 @@ type FormState = {
   dataPrepFileName: string;
   metaFileName: string;
   mmxFileName: string;
-  campaignStart: string;
-  campaignEnd: string;
-  preCampaignStart: string;
-  preCampaignEnd: string;
+  campaign_start: string;
+  campaign_end: string;
+  pre_start: string;
+  pre_end: string;
   balancingVariables: string[];
   salesMetrics: string[];
   activityTolerances: Record<string, string>;
   outlierMethod: string;
+  ctrl_ratio: number;
+  sales_metric: string;
+  SEGMENT_CATEGORICAL_1: string;
+  SEGMENT_CATEGORICAL_2: string;
+  SEGMENT_CATEGORICAL_3: string;
+  SEGMENT_CATEGORICAL_4: string;
+  SEGMENT_NUMERICAL_1: string;
+  SEGMENT_NUMERICAL_2: string;
+  SEGMENT_NUMERICAL_3: string;
 };
 
 type ParsedMetaConfig = {
@@ -37,14 +46,23 @@ const initialFormState: FormState = {
   dataPrepFileName: "",
   metaFileName: "",
   mmxFileName: "",
-  campaignStart: "",
-  campaignEnd: "",
-  preCampaignStart: "",
-  preCampaignEnd: "",
+  campaign_start: "",
+  campaign_end: "",
+  pre_start: "",
+  pre_end: "",
   balancingVariables: [],
   salesMetrics: [],
   activityTolerances: {},
   outlierMethod: "2*SD",
+  ctrl_ratio: 0.2,
+  sales_metric: "SALES_1",
+  SEGMENT_CATEGORICAL_1: "null",
+  SEGMENT_CATEGORICAL_2: "null",
+  SEGMENT_CATEGORICAL_3: "null",
+  SEGMENT_CATEGORICAL_4: "null",
+  SEGMENT_NUMERICAL_1: "null",
+  SEGMENT_NUMERICAL_2: "null",
+  SEGMENT_NUMERICAL_3: "null",
 };
 
 const normalizeCellValue = (value: unknown): string => {
@@ -219,24 +237,24 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
       nextErrors.mmxFileName = "Synthetic approach requires an MMX file.";
     }
 
-    if (!formData.campaignStart) {
-      nextErrors.campaignStart = "Campaign start date is required.";
+    if (!formData.campaign_start) {
+      nextErrors.campaign_start = "Campaign start date is required.";
     }
 
-    if (!formData.campaignEnd) {
-      nextErrors.campaignEnd = "Campaign end date is required.";
+    if (!formData.campaign_end) {
+      nextErrors.campaign_end = "Campaign end date is required.";
     }
 
-    if (formData.campaignStart && formData.campaignEnd && formData.campaignStart > formData.campaignEnd) {
-      nextErrors.campaignEnd = "Campaign end date must be on or after the start date.";
+    if (formData.campaign_start && formData.campaign_end && formData.campaign_start > formData.campaign_end) {
+      nextErrors.campaign_end = "Campaign end date must be on or after the start date.";
     }
 
-    if ((formData.preCampaignStart && !formData.preCampaignEnd) || (!formData.preCampaignStart && formData.preCampaignEnd)) {
+    if ((formData.pre_start && !formData.pre_end) || (!formData.pre_start && formData.pre_end)) {
       nextErrors.preCampaignPeriod = "Complete both pre-campaign dates or clear them.";
     }
 
-    if (formData.preCampaignStart && formData.preCampaignEnd && formData.preCampaignStart > formData.preCampaignEnd) {
-      nextErrors.preCampaignEnd = "Pre-campaign end date must be on or after the start date.";
+    if (formData.pre_start && formData.pre_end && formData.pre_start > formData.pre_end) {
+      nextErrors.pre_end = "Pre-campaign end date must be on or after the start date.";
     }
 
     if (metaConfig.segments.length > 0 && formData.balancingVariables.length === 0) {
@@ -295,7 +313,7 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
         .map((key) => metaConfig.sales.find((option) => option.key === key)?.label || key)
         .join(", ");
 
-      const successMessage = `Control configuration submitted for ${formData.approach}. Campaign ${formData.campaignStart || "-"} to ${formData.campaignEnd || "-"}. Balancing variables: ${selectedSegments || "None"}. Sales metrics: ${selectedSales || "None"}.`;
+      const successMessage = `Control configuration submitted for ${formData.approach}. Campaign ${formData.campaign_start || "-"} to ${formData.campaign_end || "-"}. Balancing variables: ${selectedSegments || "None"}. Sales metrics: ${selectedSales || "None"}.`;
       setSubmissionSummary(successMessage);
       setShowSuccessPopup(true);
       resetForm();
@@ -399,12 +417,12 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
               }
               startLabel="Campaign period start date"
               endLabel="Campaign period end date"
-              startValue={formData.campaignStart}
-              endValue={formData.campaignEnd}
-              startError={errors.campaignStart}
-              endError={errors.campaignEnd}
-              onStartChange={(value) => handleFieldChange("campaignStart", value)}
-              onEndChange={(value) => handleFieldChange("campaignEnd", value)}
+              startValue={formData.campaign_start}
+              endValue={formData.campaign_end}
+              startError={errors.campaign_start}
+              endError={errors.campaign_end}
+              onStartChange={(value) => handleFieldChange("campaign_start", value)}
+              onEndChange={(value) => handleFieldChange("campaign_end", value)}
             />
             <DateRangeField
               title={
@@ -415,12 +433,12 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
               }
               startLabel="Pre-campaign start date"
               endLabel="Pre-campaign end date"
-              startValue={formData.preCampaignStart}
-              endValue={formData.preCampaignEnd}
-              startError={errors.preCampaignStart}
-              endError={errors.preCampaignEnd || errors.preCampaignPeriod}
-              onStartChange={(value) => handleFieldChange("preCampaignStart", value)}
-              onEndChange={(value) => handleFieldChange("preCampaignEnd", value)}
+              startValue={formData.pre_start}
+              endValue={formData.pre_end}
+              startError={errors.pre_start}
+              endError={errors.pre_end || errors.preCampaignPeriod}
+              onStartChange={(value) => handleFieldChange("pre_start", value)}
+              onEndChange={(value) => handleFieldChange("pre_end", value)}
             />
           </div>
 

@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
 from datetime import datetime
@@ -14,14 +14,23 @@ class CampaignControlFormData(BaseModel):
     dataPrepFileName: str
     metaFileName: str
     mmxFileName: str
-    campaignStart: str
-    campaignEnd: str
-    preCampaignStart: str
-    preCampaignEnd: str
+    campaign_start: str
+    campaign_end: str
+    pre_start: str
+    pre_end: str
     balancingVariables: List[str]
     salesMetrics: List[str]
     activityTolerances: Dict[str, str]
     outlierMethod: str
+    ctrl_ratio: float = 0.2
+    sales_metric: str = "SALES_1"
+    SEGMENT_CATEGORICAL_1: str = "null"
+    SEGMENT_CATEGORICAL_2: str = "null"
+    SEGMENT_CATEGORICAL_3: str = "null"
+    SEGMENT_CATEGORICAL_4: str = "null"
+    SEGMENT_NUMERICAL_1: str = "null"
+    SEGMENT_NUMERICAL_2: str = "null"
+    SEGMENT_NUMERICAL_3: str = "null"
 
 app = FastAPI()
 
@@ -43,14 +52,23 @@ HEADERS = [
     "dataPrepFileName",
     "metaFileName",
     "mmxFileName",
-    "campaignStart",
-    "campaignEnd",
-    "preCampaignStart",
-    "preCampaignEnd",
+    "campaign_start",
+    "campaign_end",
+    "pre_start",
+    "pre_end",
     "balancingVariables",
     "salesMetrics",
     "activityTolerances",
     "outlierMethod",
+    "ctrl_ratio",
+    "sales_metric",
+    "SEGMENT_CATEGORICAL_1",
+    "SEGMENT_CATEGORICAL_2",
+    "SEGMENT_CATEGORICAL_3",
+    "SEGMENT_CATEGORICAL_4",
+    "SEGMENT_NUMERICAL_1",
+    "SEGMENT_NUMERICAL_2",
+    "SEGMENT_NUMERICAL_3",
 ]
 
 
@@ -100,6 +118,35 @@ def safe_save_workbook(workbook: Workbook, path: Path):
         raise HTTPException(status_code=500, detail=f"Unable to save Excel file: {exc}") from exc
 
 
+def normalize_form_data(payload: Dict[str, Any]) -> CampaignControlFormData:
+    normalized_payload: Dict[str, Any] = dict(payload)
+
+    if "campaign_end" not in normalized_payload and "campaignEnd" in normalized_payload:
+        normalized_payload["campaign_end"] = normalized_payload["campaignEnd"]
+    if "pre_start" not in normalized_payload and "precampaign_start" in normalized_payload:
+        normalized_payload["pre_start"] = normalized_payload["precampaign_start"]
+    if "pre_end" not in normalized_payload and "preCampaignEnd" in normalized_payload:
+        normalized_payload["pre_end"] = normalized_payload["preCampaignEnd"]
+    if "campaign_start" not in normalized_payload and "campaignStart" in normalized_payload:
+        normalized_payload["campaign_start"] = normalized_payload["campaignStart"]
+
+    normalized_payload.setdefault("balancingVariables", [])
+    normalized_payload.setdefault("salesMetrics", [])
+    normalized_payload.setdefault("activityTolerances", {})
+    normalized_payload.setdefault("outlierMethod", "2*SD")
+    normalized_payload.setdefault("ctrl_ratio", 0.2)
+    normalized_payload.setdefault("sales_metric", "SALES_1")
+    normalized_payload.setdefault("SEGMENT_CATEGORICAL_1", "null")
+    normalized_payload.setdefault("SEGMENT_CATEGORICAL_2", "null")
+    normalized_payload.setdefault("SEGMENT_CATEGORICAL_3", "null")
+    normalized_payload.setdefault("SEGMENT_CATEGORICAL_4", "null")
+    normalized_payload.setdefault("SEGMENT_NUMERICAL_1", "null")
+    normalized_payload.setdefault("SEGMENT_NUMERICAL_2", "null")
+    normalized_payload.setdefault("SEGMENT_NUMERICAL_3", "null")
+
+    return CampaignControlFormData(**normalized_payload)
+
+
 def append_submission(sheet, submission: CampaignControlFormData):
     values = [
         datetime.utcnow().isoformat(),
@@ -107,14 +154,23 @@ def append_submission(sheet, submission: CampaignControlFormData):
         submission.dataPrepFileName,
         submission.metaFileName,
         submission.mmxFileName,
-        submission.campaignStart,
-        submission.campaignEnd,
-        submission.preCampaignStart,
-        submission.preCampaignEnd,
+        submission.campaign_start,
+        submission.campaign_end,
+        submission.pre_start,
+        submission.pre_end,
         json.dumps(submission.balancingVariables, ensure_ascii=False),
         json.dumps(submission.salesMetrics, ensure_ascii=False),
         json.dumps(submission.activityTolerances, ensure_ascii=False),
         submission.outlierMethod,
+        submission.ctrl_ratio,
+        submission.sales_metric,
+        submission.SEGMENT_CATEGORICAL_1,
+        submission.SEGMENT_CATEGORICAL_2,
+        submission.SEGMENT_CATEGORICAL_3,
+        submission.SEGMENT_CATEGORICAL_4,
+        submission.SEGMENT_NUMERICAL_1,
+        submission.SEGMENT_NUMERICAL_2,
+        submission.SEGMENT_NUMERICAL_3,
     ]
     sheet.append(values)
     for idx, _ in enumerate(values, start=1):
@@ -134,25 +190,35 @@ def load_submissions(sheet):
             "dataPrepFileName": row[2] or "",
             "metaFileName": row[3] or "",
             "mmxFileName": row[4] or "",
-            "campaignStart": row[5] or "",
-            "campaignEnd": row[6] or "",
-            "preCampaignStart": row[7] or "",
-            "preCampaignEnd": row[8] or "",
+            "campaign_start": row[5] or "",
+            "campaign_end": row[6] or "",
+            "pre_start": row[7] or "",
+            "pre_end": row[8] or "",
             "balancingVariables": json.loads(row[9]) if row[9] else [],
             "salesMetrics": json.loads(row[10]) if row[10] else [],
             "activityTolerances": json.loads(row[11]) if row[11] else {},
             "outlierMethod": row[12] or "",
+            "ctrl_ratio": row[13] if len(row) > 13 else 0.2,
+            "sales_metric": row[14] if len(row) > 14 else "SALES_1",
+            "SEGMENT_CATEGORICAL_1": row[15] if len(row) > 15 else "null",
+            "SEGMENT_CATEGORICAL_2": row[16] if len(row) > 16 else "null",
+            "SEGMENT_CATEGORICAL_3": row[17] if len(row) > 17 else "null",
+            "SEGMENT_CATEGORICAL_4": row[18] if len(row) > 18 else "null",
+            "SEGMENT_NUMERICAL_1": row[19] if len(row) > 19 else "null",
+            "SEGMENT_NUMERICAL_2": row[20] if len(row) > 20 else "null",
+            "SEGMENT_NUMERICAL_3": row[21] if len(row) > 21 else "null",
         }
         submissions.append(submission)
     return submissions
 
 
 @app.post("/api/campaign-control")
-async def save_campaign_control(form_data: CampaignControlFormData):
+async def save_campaign_control(form_data: Dict[str, Any]):
+    normalized_submission = normalize_form_data(form_data)
     EXCEL_PATH.parent.mkdir(parents=True, exist_ok=True)
     workbook = get_workbook()
     sheet = ensure_sheet(workbook)
-    append_submission(sheet, form_data)
+    append_submission(sheet, normalized_submission)
     safe_save_workbook(workbook, EXCEL_PATH)
     return {"success": True, "message": "Control form data saved successfully."}
 
