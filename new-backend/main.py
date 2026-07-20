@@ -1,7 +1,7 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
@@ -36,14 +36,27 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-EXCEL_PATH = BASE_DIR / "public" / "Final_Results.xlsx"
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
+
+PUBLIC_DIR = PROJECT_ROOT / "public"
+
+EXCEL_PATH = PUBLIC_DIR / "Final_Results.xlsx"
+UPLOAD_DIR = PUBLIC_DIR / "uploads"
+
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+print("PROJECT_ROOT :", PROJECT_ROOT)
+print("PUBLIC_DIR   :", PUBLIC_DIR)
+print("UPLOAD_DIR   :", UPLOAD_DIR)
 SHEET_NAME = "CampaignControlForm"
 
 HEADERS = [
@@ -70,7 +83,7 @@ HEADERS = [
     "SEGMENT_NUMERICAL_2",
     "SEGMENT_NUMERICAL_3",
 ]
-
+print("Upload Folder:", UPLOAD_DIR.resolve())
 
 def get_workbook() -> Workbook:
     if EXCEL_PATH.exists():
@@ -147,6 +160,48 @@ def normalize_form_data(payload: Dict[str, Any]) -> CampaignControlFormData:
     return CampaignControlFormData(**normalized_payload)
 
 
+def build_upload_path(filename: str) -> Path:
+    original_name = Path(filename or "upload").name
+    if not original_name:
+        original_name = "upload"
+
+    stem = Path(original_name).stem or "upload"
+    suffix = Path(original_name).suffix
+    candidate = UPLOAD_DIR / f"{stem}{suffix}"
+    counter = 1
+
+    while candidate.exists():
+        candidate = UPLOAD_DIR / f"{stem}_{counter}{suffix}"
+        counter += 1
+
+    return candidate
+
+
+async def save_uploaded_file(upload: Optional[UploadFile]) -> Optional[str]:
+    if upload is None or upload.filename is None:
+        return None
+
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+    destination = build_upload_path(upload.filename)
+
+    print(f"Saving file: {upload.filename}")
+    print(f"Destination: {destination.resolve()}")
+
+    try:
+        with destination.open("wb") as file_handle:
+            while chunk := await upload.read(1024 * 1024):
+                file_handle.write(chunk)
+
+        print("Saved successfully.")
+
+    except Exception as e:
+        print("Upload Error:", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return f"/uploads/{destination.name}"
+
+
 def append_submission(sheet, submission: CampaignControlFormData):
     values = [
         datetime.utcnow().isoformat(),
@@ -213,15 +268,35 @@ def load_submissions(sheet):
 
 
 @app.post("/api/campaign-control")
-async def save_campaign_control(form_data: Dict[str, Any]):
-    normalized_submission = normalize_form_data(form_data)
-    EXCEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+async def save_campaign_control(request: Request):
+
+    print("===== API HIT =====")
+
+    form_data = await request.form()
+
+    print("Form Keys:", list(form_data.keys()))
+
+    payload_value = form_data["payload"]
+    form_payload = json.loads(payload_value)
+
+    for field in ["dataPrepFile", "metaFile", "mmxFile"]:
+        upload = form_data.get(field)
+
+        print(field, upload)
+
+        if upload and getattr(upload, "filename", None):
+            saved = await save_uploaded_file(upload)
+            form_payload[field + "Name"] = saved
+
+    normalized_submission = normalize_form_data(form_payload)
     workbook = get_workbook()
     sheet = ensure_sheet(workbook)
     append_submission(sheet, normalized_submission)
     safe_save_workbook(workbook, EXCEL_PATH)
-    return {"success": True, "message": "Control form data saved successfully."}
-
+    return {
+        "success": True,
+        "message": "Saved"
+    }
 
 @app.get("/api/campaign-control")
 async def get_campaign_control():

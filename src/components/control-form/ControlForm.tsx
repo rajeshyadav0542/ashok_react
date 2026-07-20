@@ -147,6 +147,11 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<{ dataPrep: File | null; meta: File | null; mmx: File | null }>({
+    dataPrep: null,
+    meta: null,
+    mmx: null,
+  });
 
   const dataPrepInputRef = useRef<HTMLInputElement | null>(null);
   const metaInputRef = useRef<HTMLInputElement | null>(null);
@@ -175,6 +180,7 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
         setMetaConfig(parsedConfig);
         setMetaStatus(`Meta file loaded successfully. ${parsedConfig.segments.length} segments, ${parsedConfig.sales.length} sales metrics and ${parsedConfig.activities.length} activities detected.`);
         setFormData((prev) => ({ ...prev, metaFileName: file.name }));
+        setUploadedFiles((prev) => ({ ...prev, meta: file }));
         setErrors((prev) => ({ ...prev, metaFileName: "" }));
       } catch (error) {
         setMetaStatus(`Unable to read the selected file. ${error instanceof Error ? error.message : "Please try another workbook."}`);
@@ -184,6 +190,11 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
         ...prev,
         dataPrepFileName: target === "dataPrep" ? file.name : prev.dataPrepFileName,
         mmxFileName: target === "mmx" ? file.name : prev.mmxFileName,
+      }));
+      setUploadedFiles((prev) => ({
+        ...prev,
+        dataPrep: target === "dataPrep" ? file : prev.dataPrep,
+        mmx: target === "mmx" ? file : prev.mmx,
       }));
       setErrors((prev) => ({ ...prev, [target === "dataPrep" ? "dataPrepFileName" : "mmxFileName"]: "" }));
     }
@@ -278,6 +289,7 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
     setErrors({});
     setMetaConfig({ segments: [], sales: [], activities: [] });
     setMetaStatus("");
+    setUploadedFiles({ dataPrep: null, meta: null, mmx: null });
     if (dataPrepInputRef.current) dataPrepInputRef.current.value = "";
     if (metaInputRef.current) metaInputRef.current.value = "";
     if (mmxInputRef.current) mmxInputRef.current.value = "";
@@ -295,12 +307,34 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
     setSubmissionSummary("Saving campaign control configuration...");
 
     try {
+      const payload = JSON.stringify(formData);
+      const submitFormData = new FormData();
+      submitFormData.append("payload", payload);
+
+      if (uploadedFiles.dataPrep) {
+        submitFormData.append("dataPrepFile", uploadedFiles.dataPrep);
+      }
+
+      if (uploadedFiles.meta) {
+        submitFormData.append("metaFile", uploadedFiles.meta);
+      }
+
+      if (uploadedFiles.mmx) {
+        submitFormData.append("mmxFile", uploadedFiles.mmx);
+      }
+
+    // test start
+      console.log("Uploading Files...");
+      console.log(uploadedFiles);
+
+      for (const pair of submitFormData.entries()) {
+          console.log(pair[0], pair[1]);
+}
       const response = await fetch("http://localhost:8000/api/campaign-control", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: submitFormData,
       });
-
+    // test End
       if (!response.ok) {
         const errorBody = await response.text();
         throw new Error(errorBody || "Unable to save form data.");
