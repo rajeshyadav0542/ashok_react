@@ -1425,7 +1425,7 @@ import pandas as pd
 print("Reading Input Files...")
 # Read Excel files
 data_pd = pd.read_excel(
-    r"C:\Users\thallapally.kumar\OneDrive - Indegene Limited\Desktop\Genen Tech - Demo OCM Dashboard\shared Files\Strat_data.xlsx"
+    r"C:\Users\ashok.tiwari\omnichannel_backend\shared Files\shared Files\Strat_data.xlsx"
 )
 
 print("Data File Loaded")
@@ -1433,192 +1433,49 @@ print("Data File Loaded")
 print("Reading Meta File...")
 
 meta_pd = pd.read_excel(
-    r"C:\Users\thallapally.kumar\OneDrive - Indegene Limited\Desktop\Genen Tech - Demo OCM Dashboard\shared Files\strat_meta.xlsx"
+    r"C:\Users\ashok.tiwari\omnichannel_backend\shared Files\shared Files\strat_meta.xlsx"
 )
 print("Meta File Loaded")
 
 print("Data Shape :", data_pd.shape)
 print("Meta Shape :", meta_pd.shape)
 
-import pandas as pd
-import ast
-
-# ============================================================
-# FILE PATH
-# ============================================================
-
-excel_path = r"C:\Users\thallapally.kumar\OneDrive - Indegene Limited\Desktop\Genen Tech - Demo OCM Dashboard\shared Files\STRATIFICATION_INPUT FILEDS.xlsx"
-
-
-
-# ============================================================
-# READ LATEST REQUEST FROM SHEET2
-# ============================================================
-
-input_df = pd.read_excel(
-    excel_path,
-    sheet_name="Sheet2"
-)
-
-latest = input_df.iloc[-1]
-
-# ============================================================
-# JOB ID
-# ============================================================
-
-job_id = latest["Job_ID"]
-
-# ============================================================
-# DATE INPUTS → YYYYMM
-# ============================================================
-
-campaign_start = pd.to_datetime(
-    latest["campaign_start"]
-).strftime("%Y%m")
-
-campaign_end = pd.to_datetime(
-    latest["campaign_end"]
-).strftime("%Y%m")
-
-pre_start = pd.to_datetime(
-    latest["pre_start"]
-).strftime("%Y%m")
-
-pre_end = pd.to_datetime(
-    latest["pre_end"]
-).strftime("%Y%m")
-
-# ============================================================
-# OTHER INPUTS
-# ============================================================
-
-ctrl_ratio = float(latest["ctrl_ratio"])
-
-sales_metric = latest["sales_metric"]
-
-# ============================================================
-# CATEGORICAL SEGMENTS
-# Example:
-# ["segment_1","segment_2"]
-# ============================================================
-
-selected_categorical_vars = ast.literal_eval(
-    str(latest["balancingVariables"])
-)
-
-# ============================================================
-# NUMERICAL SEGMENTS
-# Example:
-# ["SEGMENT_NUMERICAL_1","SEGMENT_NUMERICAL_2"]
-# ============================================================
-
-selected_numeric_vars = ast.literal_eval(
-    str(latest["selected_numeric_vars"])
-)
-
-# ============================================================
-# RUN STRATIFICATION PIPELINE
-# ============================================================
-
 results = run_stratification_pipeline(
     data_df=data_pd,
     meta_df=meta_pd,
 
-    campaign_start=campaign_start,
-    campaign_end=campaign_end,
+    campaign_start="202507",
+    campaign_end="202512",
 
-    pre_start=pre_start,
-    pre_end=pre_end,
+    pre_start="202501",
+    pre_end="202506",
 
-    ctrl_ratio=ctrl_ratio,
+    ctrl_ratio=0.20,
 
-    sales_metric=sales_metric,
+    sales_metric="SALES_1",
 
-    selected_categorical_vars=selected_categorical_vars,
+    selected_categorical_vars=[
+        "SEGMENT_CATEGORICAL_1",
+        "SEGMENT_CATEGORICAL_2"
+    ],
 
-    selected_numeric_vars=selected_numeric_vars
+    selected_numeric_vars=[
+        "SEGMENT_NUMERICAL_1",
+        "SEGMENT_NUMERICAL_2"
+    ]
 )
-
-# ============================================================
-# SHOW RESULTS
-# ============================================================
 
 print("\nFINAL OUTPUT")
 print(results)
-
-# ============================================================
-# CREATE OUTPUT RECORD
-# ============================================================
-
-output_record = {
-    "Job_ID": job_id
-}
-
-output_record.update(
-    results["final_results"]
-)
-
 final_results_df = pd.DataFrame(
-    [output_record]
+    [results["final_results"]]
 )
 
-# ============================================================
-# READ EXISTING SHEET3
-# ============================================================
+output_path = r"C:\Users\ashok.tiwari\omnichannel_backend\shared Files\shared Files\Final_Results.xlsx"
 
-try:
+final_results_df.to_excel(
+    output_path,
+    index=False
+)
 
-    existing_results = pd.read_excel(
-        excel_path,
-        sheet_name="Sheet3"
-    )
-
-    existing_results = existing_results.dropna(
-        how="all"
-    )
-
-except Exception:
-
-    existing_results = pd.DataFrame()
-
-# ============================================================
-# APPEND NEW RESULTS
-# ============================================================
-
-if existing_results.empty:
-
-    final_output_df = final_results_df.copy()
-
-else:
-
-    final_output_df = pd.concat(
-        [
-            existing_results,
-            final_results_df
-        ],
-        ignore_index=True
-    )
-
-# ============================================================
-# EXPORT RESULTS TO SHEET3
-# ============================================================
-
-with pd.ExcelWriter(
-    excel_path,
-    engine="openpyxl",
-    mode="a",
-    if_sheet_exists="replace"
-) as writer:
-
-    final_output_df.to_excel(
-        writer,
-        sheet_name="Sheet3",
-        index=False
-    )
-
-print("\n" + "=" * 80)
-print("✅ RESULTS EXPORTED SUCCESSFULLY")
-print(f"✅ Job ID              : {job_id}")
-print(f"✅ Sheet Name          : Sheet3")
-print(f"✅ Total Records       : {len(final_output_df)}")
-print("=" * 80)
+print(f"Final results exported to: {output_path}")
