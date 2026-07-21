@@ -48,7 +48,7 @@ const DashboardPage: React.FC = () => {
             </div>
             <Button onClick={handleOpenControlFormFull} variant="outline" size="sm" className="flex items-center gap-2">
               <FileDown className="h-4 w-4" />
-              Export File
+              Test & Control Setup
             </Button>
           </div>
         </div>

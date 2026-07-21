@@ -582,7 +582,7 @@ interface GapAnalysisRow {
             <TabsTrigger value="dq-rules"><ShieldCheck className="h-4 w-4 mr-2"/>DQ Rules</TabsTrigger>
             <TabsTrigger value="ces"><Gauge className="h-4 w-4 mr-2"/>Engagement Scoring</TabsTrigger>
             <TabsTrigger value="dashboard"><BarChart3 className="h-4 w-4 mr-2"/>Demo Dashboard</TabsTrigger>
-            <TabsTrigger value="new-dashboard"><BarChart3 className="h-4 w-4 mr-2"/>New Dashboard</TabsTrigger>
+            <TabsTrigger value="new-dashboard"><BarChart3 className="h-4 w-4 mr-2"/>Experimental Dashboard</TabsTrigger>
             <TabsTrigger value="bench"><BookOpen className="h-4 w-4 mr-2"/>Benchmarks</TabsTrigger>
             <TabsTrigger value="govern"><ShieldCheck className="h-4 w-4 mr-2"/>Governance</TabsTrigger>
           </TabsList>

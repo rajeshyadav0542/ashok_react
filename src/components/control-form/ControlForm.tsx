@@ -152,6 +152,11 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
     meta: null,
     mmx: null,
   });
+  const [uploadStatus, setUploadStatus] = useState({
+    dataPrep: false,
+    meta: false,
+    mmx: false,
+  });
 
   const dataPrepInputRef = useRef<HTMLInputElement | null>(null);
   const metaInputRef = useRef<HTMLInputElement | null>(null);
@@ -159,45 +164,72 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
 
   const canPopulateDynamicInputs = metaConfig.segments.length > 0 || metaConfig.sales.length > 0 || metaConfig.activities.length > 0;
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, target: "dataPrep" | "meta" | "mmx") => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const uploadFile = async (
+    file: File,
+    target: "dataPrep" | "meta" | "mmx"
+  ) => {
+    const formData = new FormData();
 
-    if (target === "meta") {
-      const extension = file.name.split(".").pop()?.toLowerCase();
-      try {
-        let workbook: XLSX.WorkBook;
-
-        if (extension === "csv") {
-          const text = await file.text();
-          workbook = XLSX.read(text, { type: "string" });
-        } else {
-          const buffer = await file.arrayBuffer();
-          workbook = XLSX.read(buffer, { type: "array" });
-        }
-
-        const parsedConfig = parseMetaMappingFile(workbook);
-        setMetaConfig(parsedConfig);
-        setMetaStatus(`Meta file loaded successfully. ${parsedConfig.segments.length} segments, ${parsedConfig.sales.length} sales metrics and ${parsedConfig.activities.length} activities detected.`);
-        setFormData((prev) => ({ ...prev, metaFileName: file.name }));
-        setUploadedFiles((prev) => ({ ...prev, meta: file }));
-        setErrors((prev) => ({ ...prev, metaFileName: "" }));
-      } catch (error) {
-        setMetaStatus(`Unable to read the selected file. ${error instanceof Error ? error.message : "Please try another workbook."}`);
-      }
+    if (target === "dataPrep") {
+      formData.append("dataPrepFile", file);
+    } else if (target === "meta") {
+      formData.append("metaFile", file);
     } else {
-      setFormData((prev) => ({
+      formData.append("mmxFile", file);
+    }
+
+    try {
+      const response = await fetch(
+        "http://localhost:8000/api/upload-file",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const result = await response.json();
+
+      // Disable the button after successful upload
+      setUploadStatus((prev) => ({
         ...prev,
-        dataPrepFileName: target === "dataPrep" ? file.name : prev.dataPrepFileName,
-        mmxFileName: target === "mmx" ? file.name : prev.mmxFileName,
+        [target]: true,
       }));
+
+      return result.filePath;
+    } catch (err) {
+      console.error(err);
+      alert("Upload failed");
+      return null;
+    }
+  };
+
+  const handleFileUpload = (
+      event: React.ChangeEvent<HTMLInputElement>,
+      target: "dataPrep" | "meta" | "mmx"
+    ) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
       setUploadedFiles((prev) => ({
         ...prev,
         dataPrep: target === "dataPrep" ? file : prev.dataPrep,
+        meta: target === "meta" ? file : prev.meta,
         mmx: target === "mmx" ? file : prev.mmx,
       }));
-      setErrors((prev) => ({ ...prev, [target === "dataPrep" ? "dataPrepFileName" : "mmxFileName"]: "" }));
-    }
+
+      setFormData((prev) => ({
+        ...prev,
+        dataPrepFileName:
+          target === "dataPrep" ? file.name : prev.dataPrepFileName,
+        metaFileName:
+          target === "meta" ? file.name : prev.metaFileName,
+        mmxFileName:
+          target === "mmx" ? file.name : prev.mmxFileName,
+      }));
   };
 
   const handleFieldChange = (field: keyof FormState, value: string) => {
@@ -309,19 +341,20 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
     try {
       const payload = JSON.stringify(formData);
       const submitFormData = new FormData();
-      submitFormData.append("payload", payload);
 
-      if (uploadedFiles.dataPrep) {
-        submitFormData.append("dataPrepFile", uploadedFiles.dataPrep);
-      }
+        submitFormData.append("payload", JSON.stringify(formData));
 
-      if (uploadedFiles.meta) {
-        submitFormData.append("metaFile", uploadedFiles.meta);
-      }
+        if (uploadedFiles.dataPrep) {
+          submitFormData.append("dataPrepFile", uploadedFiles.dataPrep);
+        }
 
-      if (uploadedFiles.mmx) {
-        submitFormData.append("mmxFile", uploadedFiles.mmx);
-      }
+        if (uploadedFiles.meta) {
+          submitFormData.append("metaFile", uploadedFiles.meta);
+        }
+
+        if (uploadedFiles.mmx) {
+          submitFormData.append("mmxFile", uploadedFiles.mmx);
+        }
 
     // test start
       console.log("Uploading Files...");
@@ -418,13 +451,50 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
                 <label className="flex items-center gap-2 text-sm text-slate-700">
                   <Upload className="h-4 w-4 text-[#003D7C]" />
                   Data prep file
-                  <input ref={dataPrepInputRef} type="file" accept=".xlsx,.xls,.csv" className="ml-auto text-sm" onChange={(event) => handleFileUpload(event, "dataPrep")} />
+                  <input ref={dataPrepInputRef} type="file" accept=".xlsx,.xls,.csv"  className="ml-auto text-sm" onChange={(event) => handleFileUpload(event, "dataPrep")} />
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploadStatus.dataPrep}
+                    onClick={() => {
+                      const file = dataPrepInputRef.current?.files?.item(0);
+
+                      if (!file) {
+                        alert("Please select a file first.");
+                        return;
+                      }
+
+                      uploadFile(file, "dataPrep");
+                    }}
+                  >
+                    {uploadStatus.dataPrep ? "Uploaded" : "Upload"}
+                  </Button>
+                  
                 </label>
+                
                 {errors.dataPrepFileName ? <p className="text-sm text-[#E0007A]">{errors.dataPrepFileName}</p> : null}
                 <label className="flex items-center gap-2 text-sm text-slate-700">
                   <FileSpreadsheet className="h-4 w-4 text-[#003D7C]" />
                   Meta mapping file
                   <input ref={metaInputRef} type="file" accept=".xlsx,.xls,.csv" className="ml-auto text-sm" onChange={(event) => handleFileUpload(event, "meta")} />
+                  <Button
+                        type="button"
+                        variant="outline"
+                        disabled={uploadStatus.meta}
+                        onClick={() => {
+                          const file = metaInputRef.current?.files?.item(0);
+
+                          if (!file) {
+                            alert("Please select a file first.");
+                            return;
+                          }
+
+                          uploadFile(file, "meta");
+                        }}
+                      >
+                        {uploadStatus.meta ? "Uploaded" : "Upload"}
+                    </Button>
                 </label>
                 {errors.metaFileName ? <p className="text-sm text-[#E0007A]">{errors.metaFileName}</p> : null}
                 {formData.approach === "Synthetic" && (
@@ -433,6 +503,23 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
                       <Settings2 className="h-4 w-4 text-[#003D7C]" />
                       MMX file
                       <input ref={mmxInputRef} type="file" accept=".xlsx,.xls,.csv" className="ml-auto text-sm" onChange={(event) => handleFileUpload(event, "mmx")} />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={uploadStatus.mmx}
+                        onClick={() => {
+                          const file = mmxInputRef.current?.files?.item(0);
+
+                          if (!file) {
+                            alert("Please select a file first.");
+                            return;
+                          }
+
+                          uploadFile(file, "mmx");
+                        }}
+                      >
+                        {uploadStatus.mmx ? "Uploaded" : "Upload"}
+                      </Button>
                     </label>
                     {errors.mmxFileName ? <p className="text-sm text-[#E0007A]">{errors.mmxFileName}</p> : null}
                   </>

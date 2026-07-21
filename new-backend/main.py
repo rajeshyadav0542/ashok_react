@@ -1,7 +1,7 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, Request, UploadFile
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
@@ -50,7 +50,7 @@ PROJECT_ROOT = BASE_DIR.parent
 PUBLIC_DIR = PROJECT_ROOT / "public"
 
 EXCEL_PATH = PUBLIC_DIR / "Final_Results.xlsx"
-UPLOAD_DIR = PUBLIC_DIR / "uploads"
+UPLOAD_DIR = PUBLIC_DIR / "metadata"
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -199,7 +199,7 @@ async def save_uploaded_file(upload: Optional[UploadFile]) -> Optional[str]:
         print("Upload Error:", e)
         raise HTTPException(status_code=500, detail=str(e))
 
-    return f"/uploads/{destination.name}"
+    return f"/metadata/{destination.name}"
 
 
 def append_submission(sheet, submission: CampaignControlFormData):
@@ -279,15 +279,6 @@ async def save_campaign_control(request: Request):
     payload_value = form_data["payload"]
     form_payload = json.loads(payload_value)
 
-    for field in ["dataPrepFile", "metaFile", "mmxFile"]:
-        upload = form_data.get(field)
-
-        print(field, upload)
-
-        if upload and getattr(upload, "filename", None):
-            saved = await save_uploaded_file(upload)
-            form_payload[field + "Name"] = saved
-
     normalized_submission = normalize_form_data(form_payload)
     workbook = get_workbook()
     sheet = ensure_sheet(workbook)
@@ -310,3 +301,26 @@ async def get_campaign_control():
     sheet = workbook[SHEET_NAME]
     submissions = load_submissions(sheet)
     return {"success": True, "submissions": submissions}
+
+@app.post("/api/upload-file")
+async def upload_file(
+    dataPrepFile: UploadFile = File(None),
+    metaFile: UploadFile = File(None),
+    mmxFile: UploadFile = File(None),
+):
+
+    upload = dataPrepFile or metaFile or mmxFile
+
+    if upload is None:
+        raise HTTPException(
+            status_code=400,
+            detail="No file selected"
+        )
+
+    file_path = await save_uploaded_file(upload)
+
+    return {
+        "success": True,
+        "filePath": file_path,
+        "fileName": upload.filename
+    }
