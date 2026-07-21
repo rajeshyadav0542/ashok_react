@@ -48,13 +48,13 @@ const ClaimsBarChart: React.FC = () => {
               <YAxis tick={{ fill: "#334155", fontSize: 12 }} />
               <Tooltip formatter={(value: number) => value.toFixed(2)} />
               <Legend verticalAlign="top" height={32} />
-              <Bar dataKey="prePeriod" name="Pre period" fill="#0f172a" barSize={28}>
+              <Bar dataKey="prePeriod" name="Pre Period" fill="#0f172a" barSize={28}>
                 <LabelList dataKey="prePeriod" position="top" formatter={(label) => {
                   const value = Number(label as any);
                   return Number.isNaN(value) ? label : value.toFixed(2);
                 }} />
               </Bar>
-              <Bar dataKey="utcPeriod" name="UTC period" fill="#0ea5e9" barSize={28}>
+              <Bar dataKey="utcPeriod" name="Measurement Period" fill="#0ea5e9" barSize={28}>
                 <LabelList dataKey="utcPeriod" position="top" formatter={(label) => {
                   const value = Number(label as any);
                   return Number.isNaN(value) ? label : value.toFixed(2);
