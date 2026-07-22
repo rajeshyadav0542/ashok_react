@@ -1,53 +1,111 @@
 import React, { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components";
-import { SegmentRow, loadDashboardWorkbookData } from "./dashboardData";
+import { Card, CardContent } from "../../../components";
 
-const formatValue = (value: number) => value.toFixed(3);
+interface SegmentData {
+  Job_ID: string;
+  Test_Avg_Pre_Sales: number;
+  Test_Avg_Post_Sales: number;
+  Ctrl_Avg_Pre_Sales: number;
+  Ctrl_Avg_Post_Sales: number;
+  Test_Delta: number;
+  Ctrl_Delta: number;
+  Double_Delta: number;
+  Lift_Pct: number;
+  P_Value: number;
+  Significance: string;
+}
+
+const formatValue = (value: number | string) =>
+  typeof value === "number" ? value.toFixed(3) : value;
 
 const SegmentTable: React.FC = () => {
-  const [rows, setRows] = useState<SegmentRow[]>([]);
+  const [data, setData] = useState<SegmentData | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const workbookData = await loadDashboardWorkbookData();
-        setRows(workbookData.segmentRows);
+        const response = await fetch("http://localhost:8000/avg-claim-control");
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch dashboard data");
+        }
+
+        const result = await response.json();
+        setData(result.data);
       } catch (error) {
-        console.error("Unable to load dashboard Excel data", error);
+        console.error("Unable to load dashboard data", error);
       }
     };
 
     loadData();
   }, []);
 
+  if (!data) {
+    return (
+      <Card>
+        <CardContent>
+          <div className="text-center py-8">Loading...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base text-[#003D7C]">Claims Performance by Segment</CardTitle>
-      </CardHeader>
-      <CardContent className="overflow-auto">
-        <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-slate-600">
-            <tr>
-              <th className="px-3 py-3 text-left font-semibold">Segment</th>
-              <th className="px-3 py-3 text-right font-semibold">TEST</th>
-              <th className="px-3 py-3 text-right font-semibold">CTRL</th>
-              <th className="px-3 py-3 text-right font-semibold">Unknown</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-slate-200">
-            {rows.map((row) => (
-              <tr key={row.segment} className="hover:bg-slate-50">
-                <td className="px-3 py-3 text-slate-700">{row.segment}</td>
-                <td className="px-3 py-3 text-right font-semibold text-slate-800">{formatValue(row.test)}</td>
-                <td className="px-3 py-3 text-right text-slate-700">{formatValue(row.control)}</td>
-                <td className="px-3 py-3 text-right text-slate-700">{formatValue(row.unknown)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </CardContent>
-    </Card>
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div>
+        <Card className="h-44 flex flex-col items-center justify-center text-center shadow-md rounded-xl">
+          <h4 className="text-2xl font-bold text-blue-700">
+            {formatValue(data.Lift_Pct)}%
+          </h4>
+          <p className="mt-2 text-sm text-gray-600">Lift for Test vs Control</p>
+          <p className="mt-3 font-semibold text-green-600">
+             Statistically Significant
+          </p>
+        </Card>
+      </div>
+
+      <div>
+        <Card className="h-44 flex flex-col items-center justify-center text-center shadow-md rounded-xl">
+          <h4 className="text-lg font-semibold">Test Delta</h4>
+          <p className="mt-2 text-sm text-gray-600">For campaign vs Pre Period</p>
+          <p className="mt-4 text-2xl font-bold text-slate-700">
+            {formatValue(data.Test_Delta)}
+            <span className="mt-2 text-sm text-gray-600"> avg claims / HCP</span>
+          </p>
+        </Card>
+      </div>
+
+      <div>
+        <Card className="h-44 flex flex-col items-center justify-center text-center shadow-md rounded-xl">
+          <h4 className="text-lg font-semibold">Control Delta</h4>
+          <p className="mt-2 text-sm text-gray-600">For campaign vs Pre Period</p>
+          <p className="mt-4 text-2xl font-bold text-slate-700">
+            {formatValue(data.Ctrl_Delta)}
+            <span className="mt-2 text-sm text-gray-600"> avg claims / HCP</span>
+          </p>
+        </Card>
+      </div>
+
+      <div>
+        <Card className="h-44 flex flex-col items-center justify-center text-center shadow-md rounded-xl">
+          <h4 className="text-lg font-semibold">Double Delta</h4>
+          <p className="mt-2 text-sm text-gray-600">Difference b/w Test and Control Delta</p>
+          <p className="mt-4 text-2xl font-bold text-slate-700">
+            {formatValue(data.Double_Delta)}
+            <span className="mt-2 text-sm text-gray-600"> avg claims / HCP</span>
+          </p>
+        </Card>
+      </div>
+
+      <div>
+        <Card className="h-44 flex flex-col items-center justify-center text-center shadow-md rounded-xl">
+          <h4 className="text-lg font-semibold">P Value</h4>
+          <p className="mt-4 text-2xl font-bold text-slate-700">
+            {formatValue(data.P_Value)}
+          </p>
+        </Card>
+      </div>
+    </div>
   );
 };
 

@@ -1,11 +1,13 @@
 from fastapi import FastAPI
 import subprocess
 import pandas as pd
+from pathlib import Path
 import sys
 
 app = FastAPI()
-
-excel_path = r"C:\Users\ashok.tiwari\omnichannel\ashok_react\public\Final_results.xlsx"
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
+excel_path = PROJECT_ROOT / "public" / "metadata" / "Final_results.xlsx"
 
 @app.post("/run-stratification")
 def run_stratification():

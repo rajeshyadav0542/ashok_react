@@ -59,15 +59,15 @@ const DashboardPage: React.FC = () => {
           <ControlForm onClose={() => setIsControlFormOpen(false)} />
         </div>
       )}
-
-      <div className="grid gap-6 xl:grid-cols-2">
-        <ClaimsBarChart />
-        <LiftBySegmentChart />
-      </div>
-
       <div className="space-y-6">
         <SegmentTable />
       </div>
+      <div className="">
+        <ClaimsBarChart />
+        {/* <LiftBySegmentChart /> */}
+      </div>
+
+      
     </div>
   );
 };

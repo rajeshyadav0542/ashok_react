@@ -54,7 +54,7 @@ const ClaimsBarChart: React.FC = () => {
                   return Number.isNaN(value) ? label : value.toFixed(2);
                 }} />
               </Bar>
-              <Bar dataKey="utcPeriod" name="Measurement Period" fill="#0ea5e9" barSize={28}>
+              <Bar dataKey="utcPeriod" name="Campaign Period" fill="#0ea5e9" barSize={28}>
                 <LabelList dataKey="utcPeriod" position="top" formatter={(label) => {
                   const value = Number(label as any);
                   return Number.isNaN(value) ? label : value.toFixed(2);

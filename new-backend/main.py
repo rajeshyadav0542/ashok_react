@@ -10,7 +10,7 @@ from openpyxl.utils import get_column_letter
 from datetime import datetime
 from user_input_parameter_api import router
 from user_input_parameter_api import refresh_meta_parameters
-
+from STRATIFICATION_V2_FAST_API import run_stratification as execute_stratification
 class CampaignControlFormData(BaseModel):
     approach: str
     dataPrepFileName: str
@@ -43,6 +43,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+@app.post("/run-stratification")
+def run_stratification():
+    result = execute_stratification()
+    return result
 
 from pathlib import Path
 
@@ -311,20 +315,32 @@ async def upload_file(
     mmxFile: UploadFile = File(None),
 ):
 
-    upload = dataPrepFile or metaFile or mmxFile
+    response = {}
 
-    if upload is None:
+    if dataPrepFile:
+        file_path = await save_uploaded_file(dataPrepFile)
+        response["dataPrepFile"] = file_path
+
+    if metaFile:
+        file_path = await save_uploaded_file(metaFile)
+        refresh_meta_parameters()
+        response["metaFile"] = file_path
+        response["metaRefreshed"] = True
+
+    if mmxFile:
+        file_path = await save_uploaded_file(mmxFile)
+        response["mmxFile"] = file_path
+
+    if not response:
         raise HTTPException(
             status_code=400,
             detail="No file selected"
         )
 
-    file_path = await save_uploaded_file(upload)
-    refresh_meta_parameters()
     return {
         "success": True,
-        "filePath": file_path,
-        "fileName": upload.filename
+        **response
     }
+
 
 app.include_router(router)

@@ -1421,11 +1421,14 @@ def run_stratification_pipeline(
 
 
 import pandas as pd
-
+from pathlib import Path
 print("Reading Input Files...")
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
+PUBLIC_DIR = PROJECT_ROOT / "public" / "metadata"
 # Read Excel files
 data_pd = pd.read_excel(
-    r"C:\Users\ashok.tiwari\omnichannel\ashok_react\public\metadata\Strat_data.xlsx"
+    PUBLIC_DIR / "Strat_data.xlsx"
 )
 
 print("Data File Loaded")
@@ -1433,7 +1436,7 @@ print("Data File Loaded")
 print("Reading Meta File...")
 
 meta_pd = pd.read_excel(
-    r"C:\Users\ashok.tiwari\omnichannel\ashok_react\public\metadata\strat_meta.xlsx"
+    PUBLIC_DIR / "strat_meta.xlsx"
 )
 print("Meta File Loaded")
 
@@ -1447,7 +1450,7 @@ import ast
 # FILE PATH
 # ============================================================
 
-excel_path = r"C:\Users\ashok.tiwari\omnichannel\ashok_react\public\Final_results.xlsx"
+excel_path = PUBLIC_DIR / "Final_results.xlsx"
 
 
 

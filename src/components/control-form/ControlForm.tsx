@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { Card, CardContent, CardHeader, CardTitle, Input, Button } from "../../../components";
 import { CalendarDays, FileSpreadsheet, Settings2, Sparkles, Upload, X } from "lucide-react";
@@ -6,10 +6,19 @@ import FormField from "./FormField";
 import DateRangeField from "./DateRangeField";
 import ToggleGroupField from "./ToggleGroupField";
 
-type MetaOption = {
+interface MetaOption {
+  key: string;
+  label: string;
+}
+type ActivityEntry = {
   key: string;
   label: string;
 };
+interface ParsedMetaFileConfig {
+  segments: MetaOption[];
+  numericals: MetaOption[];
+  sales: MetaOption[];
+}
 
 type FormState = {
   approach: string;
@@ -33,6 +42,7 @@ type FormState = {
   SEGMENT_NUMERICAL_1: string;
   SEGMENT_NUMERICAL_2: string;
   SEGMENT_NUMERICAL_3: string;
+  numericalVariables: string[];
 };
 
 type ParsedMetaConfig = {
@@ -63,6 +73,7 @@ const initialFormState: FormState = {
   SEGMENT_NUMERICAL_1: "null",
   SEGMENT_NUMERICAL_2: "null",
   SEGMENT_NUMERICAL_3: "null",
+  numericalVariables: [],
 };
 
 const normalizeCellValue = (value: unknown): string => {
@@ -157,7 +168,12 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
     meta: false,
     mmx: false,
   });
-
+  const [metaFileConfig, setMetaFileConfig] = useState<ParsedMetaFileConfig>({
+    segments: [],
+    numericals: [],
+    sales: [],
+  });
+  const [activityFileEntries, setActivityFileEntries] = useState<ActivityEntry[]>([]);
   const dataPrepInputRef = useRef<HTMLInputElement | null>(null);
   const metaInputRef = useRef<HTMLInputElement | null>(null);
   const mmxInputRef = useRef<HTMLInputElement | null>(null);
@@ -237,7 +253,7 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
     setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  const handleToggleSelection = (field: "balancingVariables" | "salesMetrics", optionKey: string) => {
+  const handleToggleSelection = (field: "balancingVariables" | "salesMetrics" | "numericalVariables", optionKey: string) => {
     setFormData((prev) => {
       const currentValues = prev[field];
       return {
@@ -363,7 +379,7 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
       for (const pair of submitFormData.entries()) {
           console.log(pair[0], pair[1]);
 }
-      const response = await fetch("http://localhost:8000/api/campaign-control", {
+      const response = await fetch("http://localhost:8000/run-stratification", {
         method: "POST",
         body: submitFormData,
       });
@@ -393,6 +409,66 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
 
   const activityEntries = useMemo(() => metaConfig.activities, [metaConfig.activities]);
 
+  useEffect(() => {
+    const fetchMetaParameters = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:8000/user-meta-parameters"
+        );
+
+        const result = await response.json();
+
+        if (result.status !== "success" || result.data.length === 0) return;
+
+        const row = result.data[0];
+
+        const segments =
+          typeof row.Matching_Segments === "string"
+            ? JSON.parse(row.Matching_Segments)
+            : row.Matching_Segments;
+
+        const numericals =
+          typeof row.Matching_Numericals === "string"
+            ? JSON.parse(row.Matching_Numericals)
+            : row.Matching_Numericals;
+
+        const tolerances =
+          typeof row.Tolerences === "string"
+            ? JSON.parse(row.Tolerences)
+            : row.Tolerences;
+
+        const sales = Array.isArray(row.sales_metric)
+          ? row.sales_metric
+          : [row.sales_metric];
+
+        setMetaFileConfig({
+          segments: segments.map((item: string) => ({
+            key: item,
+            label: item,
+          })),
+          numericals: numericals.map((item: string) => ({
+            key: item,
+            label: item,
+          })),
+          sales: sales.map((item: string) => ({
+            key: item,
+            label: item,
+          })),
+        });
+
+        setActivityFileEntries(
+          tolerances.map((item: string) => ({
+            key: item,
+            label: item,
+          }))
+        );
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchMetaParameters();
+  }, []);
   return (
     <>
       <Card className="border-slate-200 shadow-sm">
@@ -568,12 +644,15 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
               <ToggleGroupField
                 label={<div className="flex items-center gap-2 text-sm font-semibold text-slate-800"><Settings2 className="h-4 w-4 text-[#003D7C]" />Balancing configuration</div>}
                 description="These values are auto-fetched from the meta file and show the actual mapped segment names."
-                options={canPopulateDynamicInputs && metaConfig.segments.length > 0 ? metaConfig.segments.map((option) => ({
-                  key: option.key,
-                  label: option.label,
-                  checked: formData.balancingVariables.includes(option.key),
-                  onChange: () => handleToggleSelection("balancingVariables", option.key),
-                })) : []}
+                options={
+                  metaFileConfig.segments.map((option) => ({
+                    key: option.key,
+                    label: option.label,
+                    checked: formData.balancingVariables.includes(option.key),
+                    onChange: () =>
+                      handleToggleSelection("balancingVariables", option.key),
+                  }))
+                }
               />
               {!canPopulateDynamicInputs || metaConfig.segments.length === 0 ? (
                 <p className="text-sm text-slate-500">Upload the meta mapping file to enable segment-based balancing selections.</p>
@@ -584,46 +663,55 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
               <ToggleGroupField
                 label={<div className="flex items-center gap-2 text-sm font-semibold text-slate-800"><Settings2 className="h-4 w-4 text-[#003D7C]" />Sales metrics</div>}
                 description="Select one or more sales metrics from the mapped business columns."
-                options={canPopulateDynamicInputs && metaConfig.sales.length > 0 ? metaConfig.sales.map((option) => ({
-                  key: option.key,
-                  label: option.label,
-                  checked: formData.salesMetrics.includes(option.key),
-                  onChange: () => handleToggleSelection("salesMetrics", option.key),
-                })) : []}
+                options={
+                  metaFileConfig.sales.map((option) => ({
+                    key: option.key,
+                    label: option.label,
+                    checked: formData.salesMetrics.includes(option.key),
+                    onChange: () =>
+                      handleToggleSelection("salesMetrics", option.key),
+                  }))
+                }
               />
               {!canPopulateDynamicInputs || metaConfig.sales.length === 0 ? (
                 <p className="text-sm text-slate-500">Upload the meta mapping file to enable sales metric selection.</p>
               ) : null}
             </div>
-            
-          </div>
-
-          <div className="space-y-4 rounded-2xl border border-slate-200 p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-              <Settings2 className="h-4 w-4 text-[#003D7C]" />
-              Tolerance configuration
+            <div className="space-y-4 rounded-2xl border border-slate-200 p-4">
+              <ToggleGroupField
+                label={<div className="flex items-center gap-2 text-sm font-semibold text-slate-800"><Settings2 className="h-4 w-4 text-[#003D7C]" />Numerical Segments</div>}
+                options={metaFileConfig.numericals.map((option) => ({
+                  key: option.key,
+                  label: option.label,
+                  checked: formData.numericalVariables.includes(option.key),
+                  onChange: () =>
+                    handleToggleSelection("numericalVariables", option.key),
+                }))}
+              />
             </div>
-            <p className="text-sm text-slate-600">Activity-level tolerances are generated directly from the meta file and displayed using the actual activity names.</p>
-            <div className="space-y-3">
-              {activityEntries.length > 0 ? (
-                activityEntries.map((activity) => (
-                  <div key={activity.key} className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 md:flex-row md:items-center md:justify-between">
-                    <label className="text-sm font-medium text-slate-700">{activity.label}</label>
+            <div className="space-y-4 rounded-2xl border border-slate-200 p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                <Settings2 className="h-4 w-4 text-[#003D7C]" />
+                Tolerance configuration
+              </div>
+              <p className="text-sm text-slate-600">Activity-level tolerances are generated directly from the meta file and displayed using the actual activity names.</p>
+              <div className="space-y-3">
+                {activityFileEntries.map((activity) => (
+                  <div key={activity.key}>
+                    <label>{activity.label}</label>
                     <Input
-                      type="text"
-                      inputMode="decimal"
-                      placeholder="0.00%"
                       value={formData.activityTolerances[activity.key] || ""}
-                      onChange={(event) => handleActivityToleranceChange(activity.key, event.target.value)}
-                      className="max-w-[140px]"
+                      onChange={(e) =>
+                        handleActivityToleranceChange(activity.key, e.target.value)
+                      }
                     />
                   </div>
-                ))
-              ) : (
-                <p className="text-sm text-slate-500">Upload the meta mapping file to generate activity-level tolerance fields.</p>
-              )}
+                ))}
+              </div>
             </div>
           </div>
+
+          
 
           <div className="grid gap-6">
             <div className="space-y-2">

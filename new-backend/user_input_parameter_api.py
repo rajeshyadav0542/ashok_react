@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pathlib import Path
 import pandas as pd
 import json
@@ -96,3 +96,91 @@ def refresh_meta_parameters():
         "status": "success",
         "message": "STRATIFICATION_INPUT_FILEDS.xlsx updated successfully"
     }
+
+
+@router.get("/user-meta-parameters")
+def get_user_meta_parameters():
+    BASE_DIR = Path(__file__).resolve().parent
+    PROJECT_ROOT = BASE_DIR.parent
+
+    file_path = PROJECT_ROOT / "public" / "metadata" / "Final_results.xlsx"
+
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Final_results.xlsx not found"
+        )
+
+    try:
+        df = pd.read_excel(
+            file_path,
+            sheet_name="User_Meta_Parameters",
+            engine="openpyxl"
+        )
+
+        # Replace NaN values with None for JSON serialization
+        df = df.where(pd.notnull(df), None)
+
+        return {
+            "status": "success",
+            "data": df.to_dict(orient="records")
+        }
+
+    except ValueError:
+        raise HTTPException(
+            status_code=404,
+            detail="Sheet 'User_Meta_Parameters' not found"
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+@router.get("/avg-claim-control")
+def get_user_meta_parameters():
+    BASE_DIR = Path(__file__).resolve().parent
+    PROJECT_ROOT = BASE_DIR.parent
+
+    file_path = PROJECT_ROOT / "public" / "metadata" / "Final_results.xlsx"
+
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Final_results.xlsx not found"
+        )
+
+    try:
+        df = pd.read_excel(
+            file_path,
+            sheet_name="Output",
+            engine="openpyxl"
+        )
+
+        if df.empty:
+            return {
+                "status": "success",
+                "data": None,
+                "message": "No records found."
+            }
+
+        # Get the last row
+        last_record = df.iloc[-1].where(pd.notnull(df.iloc[-1]), None).to_dict()
+
+        return {
+            "status": "success",
+            "data": last_record
+        }
+
+    except ValueError:
+        raise HTTPException(
+            status_code=404,
+            detail="Sheet 'Output' not found"
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
