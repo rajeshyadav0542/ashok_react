@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Optional
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
 from datetime import datetime
+from user_input_parameter_api import router
+from user_input_parameter_api import refresh_meta_parameters
 
 class CampaignControlFormData(BaseModel):
     approach: str
@@ -318,9 +320,11 @@ async def upload_file(
         )
 
     file_path = await save_uploaded_file(upload)
-
+    refresh_meta_parameters()
     return {
         "success": True,
         "filePath": file_path,
         "fileName": upload.filename
     }
+
+app.include_router(router)
