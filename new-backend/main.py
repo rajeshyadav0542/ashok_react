@@ -55,7 +55,7 @@ PROJECT_ROOT = BASE_DIR.parent
 
 PUBLIC_DIR = PROJECT_ROOT / "public"
 
-EXCEL_PATH = PUBLIC_DIR / "Final_Results.xlsx"
+EXCEL_PATH = PUBLIC_DIR / "metadata" / "Final_results.xlsx"
 UPLOAD_DIR = PUBLIC_DIR / "metadata"
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -63,7 +63,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 print("PROJECT_ROOT :", PROJECT_ROOT)
 print("PUBLIC_DIR   :", PUBLIC_DIR)
 print("UPLOAD_DIR   :", UPLOAD_DIR)
-SHEET_NAME = "CampaignControlForm"
+SHEET_NAME = "Input"
 
 HEADERS = [
     "submitted_at",

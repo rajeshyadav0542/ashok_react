@@ -396,7 +396,7 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
         .map((key) => metaConfig.sales.find((option) => option.key === key)?.label || key)
         .join(", ");
 
-      const successMessage = `Control configuration submitted for ${formData.approach}. Campaign ${formData.campaign_start || "-"} to ${formData.campaign_end || "-"}. Balancing variables: ${selectedSegments || "None"}. Sales metrics: ${selectedSales || "None"}.`;
+      const successMessage = `Control configuration submitted for ${formData.approach} Job ID: ${""}. Campaign ${formData.campaign_start || "-"} to ${formData.campaign_end || "-"}. Balancing variables: ${selectedSegments || "None"}. Sales metrics: ${selectedSales || "None"}.`;
       setSubmissionSummary(successMessage);
       setShowSuccessPopup(true);
       resetForm();
@@ -515,7 +515,7 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
               >
                 <option value="">Select approach</option>
                 <option value="Stratification">Stratification</option>
-                <option value="Traditional">Traditional</option>
+                {/* <option value="Traditional">Traditional</option> */}
                 <option value="Synthetic">Synthetic</option>
               </select>
               {errors.approach ? <p className="text-sm text-[#E0007A]">{errors.approach}</p> : null}
@@ -689,12 +689,13 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
                 }))}
               />
             </div>
+            {formData.approach !== "Stratification" && (
             <div className="space-y-4 rounded-2xl border border-slate-200 p-4">
               <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                 <Settings2 className="h-4 w-4 text-[#003D7C]" />
                 Tolerance configuration
               </div>
-              <p className="text-sm text-slate-600">Activity-level tolerances are generated directly from the meta file and displayed using the actual activity names.</p>
+
               <div className="space-y-3">
                 {activityFileEntries.map((activity) => (
                   <div key={activity.key}>
@@ -709,6 +710,8 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
                 ))}
               </div>
             </div>
+          )}
+
           </div>
 
           
