@@ -19,7 +19,10 @@ interface ParsedMetaFileConfig {
   numericals: MetaOption[];
   sales: MetaOption[];
 }
-
+interface MetaGroupOption {
+  title: string;
+  options: MetaOption[];
+}
 type FormState = {
   approach: string;
   dataPrepFileName: string;
@@ -168,11 +171,10 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
     meta: false,
     mmx: false,
   });
-  const [metaFileConfig, setMetaFileConfig] = useState<ParsedMetaFileConfig>({
-    segments: [],
-    numericals: [],
-    sales: [],
-  });
+  const [segmentGroups, setSegmentGroups] = useState<MetaGroupOption[]>([]);
+  const [numericalGroups, setNumericalGroups] = useState<MetaGroupOption[]>([]);
+  const [salesGroups, setSalesGroups] = useState<MetaGroupOption[]>([]);
+  const [activityGroups, setActivityGroups] = useState<MetaGroupOption[]>([]);
   const [activityFileEntries, setActivityFileEntries] = useState<ActivityEntry[]>([]);
   const dataPrepInputRef = useRef<HTMLInputElement | null>(null);
   const metaInputRef = useRef<HTMLInputElement | null>(null);
@@ -410,65 +412,142 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
   const activityEntries = useMemo(() => metaConfig.activities, [metaConfig.activities]);
 
   useEffect(() => {
-    const fetchMetaParameters = async () => {
-      try {
-        const response = await fetch(
-          "http://localhost:8000/user-meta-parameters"
-        );
 
-        const result = await response.json();
+  const fetchMetaParameters = async () => {
 
-        if (result.status !== "success" || result.data.length === 0) return;
 
-        const row = result.data[0];
+    try {
 
-        const segments =
-          typeof row.Matching_Segments === "string"
-            ? JSON.parse(row.Matching_Segments)
-            : row.Matching_Segments;
+      const response = await fetch(
+        "http://localhost:8000/user-meta-parameters"
+      );
 
-        const numericals =
-          typeof row.Matching_Numericals === "string"
-            ? JSON.parse(row.Matching_Numericals)
-            : row.Matching_Numericals;
 
-        const tolerances =
-          typeof row.Tolerences === "string"
-            ? JSON.parse(row.Tolerences)
-            : row.Tolerences;
+      const result = await response.json();
 
-        const sales = Array.isArray(row.sales_metric)
-          ? row.sales_metric
-          : [row.sales_metric];
 
-        setMetaFileConfig({
-          segments: segments.map((item: string) => ({
-            key: item,
-            label: item,
-          })),
-          numericals: numericals.map((item: string) => ({
-            key: item,
-            label: item,
-          })),
-          sales: sales.map((item: string) => ({
-            key: item,
-            label: item,
-          })),
-        });
-
-        setActivityFileEntries(
-          tolerances.map((item: string) => ({
-            key: item,
-            label: item,
-          }))
-        );
-      } catch (err) {
-        console.error(err);
+      if (result.status !== "success") {
+        return;
       }
-    };
 
-    fetchMetaParameters();
-  }, []);
+
+      const data = result.data;
+
+
+      const groups: Record<string,string[]> = {};
+
+
+      Object.entries(data).forEach(
+        ([key,value]) => {
+
+          const groupName = key.replace(
+            /_\d+$/,
+            ""
+          );
+
+
+          if (!groups[groupName]) {
+            groups[groupName] = [];
+          }
+
+
+          groups[groupName].push(
+            ...(value as string[])
+          );
+
+        }
+      );
+
+
+      setSegmentGroups(
+        Object.keys(groups)
+          .filter((key)=>key === "SEGMENT_CATEGORICAL")
+          .map((key)=>({
+            title:key,
+            options:groups[key].map(item=>({
+              key:item,
+              label:item
+            }))
+          }))
+      );
+
+
+      setNumericalGroups(
+        Object.keys(groups)
+          .filter((key)=>key === "SEGMENT_NUMERICAL")
+          .map((key)=>({
+            title:key,
+            options:groups[key].map(item=>({
+              key:item,
+              label:item
+            }))
+          }))
+      );
+      
+      const groupedSales: Record<string, string[]> = {};
+
+      Object.entries(data).forEach(([key, value]) => {
+        if (key.startsWith("SALES")) {
+          const groupName = key.replace(/_\d+$/, "");
+
+          if (!groupedSales[groupName]) {
+            groupedSales[groupName] = [];
+          }
+
+          groupedSales[groupName].push(...(value as string[]));
+        }
+      });
+
+      setSalesGroups(
+        Object.entries(groupedSales).map(([title, values]) => ({
+          title,
+          options: values.map((item) => ({
+            key: item,
+            label: item,
+          })),
+        }))
+      );
+
+
+      const groupedActivities: Record<string, string[]> = {};
+
+      Object.entries(data).forEach(([key, value]) => {
+        if (key.startsWith("ACTIVITY")) {
+          const groupName = key.replace(/_\d+$/, "");
+
+          if (!groupedActivities[groupName]) {
+            groupedActivities[groupName] = [];
+          }
+
+          groupedActivities[groupName].push(...(value as string[]));
+        }
+      });
+
+      setActivityGroups(
+        Object.entries(groupedActivities).map(([title, values]) => ({
+          title,
+          options: values.map((item) => ({
+            key: item,
+            label: item,
+          })),
+        }))
+      );
+
+    }
+    catch(error){
+      console.error(
+        "Failed loading meta parameters",
+        error
+      );
+    }
+
+  };
+
+
+  fetchMetaParameters();
+
+},[]);
+
   return (
     <>
       <Card className="border-slate-200 shadow-sm">
@@ -642,18 +721,37 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
           <div className="grid gap-6 xl:grid-cols-2">
             <div className="space-y-4 rounded-2xl border border-slate-200 p-4">
               <ToggleGroupField
-                label={<div className="flex items-center gap-2 text-sm font-semibold text-slate-800"><Settings2 className="h-4 w-4 text-[#003D7C]" />Balancing configuration</div>}
-                description="These values are auto-fetched from the meta file and show the actual mapped segment names."
-                options={
-                  metaFileConfig.segments.map((option) => ({
-                    key: option.key,
-                    label: option.label,
-                    checked: formData.balancingVariables.includes(option.key),
-                    onChange: () =>
-                      handleToggleSelection("balancingVariables", option.key),
-                  }))
-                }
-              />
+                  label={
+                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                      <Settings2 className="h-4 w-4 text-[#003D7C]" />
+                      Balancing configuration
+                    </div>
+                  }
+
+                  groups={
+                    segmentGroups.map(group=>({
+                      title: group.title,
+
+                      options: group.options.map(option=>({
+                        key: option.key,
+                        label: option.label,
+
+                        checked:
+                          formData.balancingVariables.includes(
+                            option.key
+                          ),
+
+                        onChange:()=> 
+                          handleToggleSelection(
+                            "balancingVariables",
+                            option.key
+                          )
+                      }))
+                    }))
+                  }
+
+                />
+
               {!canPopulateDynamicInputs || metaConfig.segments.length === 0 ? (
                 <p className="text-sm text-slate-500">Upload the meta mapping file to enable segment-based balancing selections.</p>
               ) : null}
@@ -661,33 +759,70 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
 
             <div className="space-y-4 rounded-2xl border border-slate-200 p-4">
               <ToggleGroupField
-                label={<div className="flex items-center gap-2 text-sm font-semibold text-slate-800"><Settings2 className="h-4 w-4 text-[#003D7C]" />Sales metrics</div>}
-                description="Select one or more sales metrics from the mapped business columns."
-                options={
-                  metaFileConfig.sales.map((option) => ({
-                    key: option.key,
-                    label: option.label,
-                    checked: formData.salesMetrics.includes(option.key),
-                    onChange: () =>
-                      handleToggleSelection("salesMetrics", option.key),
-                  }))
-                }
-              />
+                  label={
+                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                      <Settings2 className="h-4 w-4 text-[#003D7C]" />
+                      Sales metrics
+                    </div>
+                  }
+                  groups={
+                    salesGroups.map((group) => ({
+                      title: group.title,
+                      options: group.options.map((option) => ({
+                        key: option.key,
+                        label: option.label,
+                        checked: formData.salesMetrics.includes(option.key),
+                        onChange: () =>
+                          handleToggleSelection(
+                            "salesMetrics",
+                            option.key
+                          ),
+                      })),
+                    }))
+                  }
+                />
+
               {!canPopulateDynamicInputs || metaConfig.sales.length === 0 ? (
                 <p className="text-sm text-slate-500">Upload the meta mapping file to enable sales metric selection.</p>
               ) : null}
             </div>
             <div className="space-y-4 rounded-2xl border border-slate-200 p-4">
               <ToggleGroupField
-                label={<div className="flex items-center gap-2 text-sm font-semibold text-slate-800"><Settings2 className="h-4 w-4 text-[#003D7C]" />Numerical Segments</div>}
-                options={metaFileConfig.numericals.map((option) => ({
-                  key: option.key,
-                  label: option.label,
-                  checked: formData.numericalVariables.includes(option.key),
-                  onChange: () =>
-                    handleToggleSelection("numericalVariables", option.key),
-                }))}
-              />
+                  label={
+                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                    <Settings2 className="h-4 w-4 text-[#003D7C]" />
+                    Numerical Segments
+                  </div>
+                  }
+
+
+                  groups={
+                  numericalGroups.map(group=>({
+                    title:group.title,
+
+                    options:group.options.map(option=>({
+
+                      key:option.key,
+
+                      label:option.label,
+
+                      checked:
+                        formData.numericalVariables.includes(
+                          option.key
+                        ),
+
+                      onChange:()=> 
+                        handleToggleSelection(
+                          "numericalVariables",
+                          option.key
+                        )
+
+                    }))
+                  }))
+                  }
+
+                  />
+
             </div>
             {formData.approach !== "Stratification" && (
             <div className="space-y-4 rounded-2xl border border-slate-200 p-4">
@@ -696,20 +831,39 @@ const ControlForm: React.FC<ControlFormProps> = ({ onClose }) => {
                 Tolerance configuration
               </div>
 
-              <div className="space-y-3">
-                {activityFileEntries.map((activity) => (
-                  <div key={activity.key}>
-                    <label>{activity.label}</label>
-                    <Input
-                      value={formData.activityTolerances[activity.key] || ""}
-                      onChange={(e) =>
-                        handleActivityToleranceChange(activity.key, e.target.value)
-                      }
-                    />
+              {activityGroups.map((group) => (
+                <div key={group.title} className="space-y-3">
+
+                  <div className="font-medium text-slate-700">
+                    {group.title}
                   </div>
-                ))}
-              </div>
+
+                  {group.options.map((activity) => (
+                    <div
+                      key={activity.key}
+                      className="grid grid-cols-2 items-center gap-4 pl-4"
+                    >
+                      <label className="text-sm text-slate-700">
+                        {activity.label}
+                      </label>
+
+                      <Input
+                        value={formData.activityTolerances[activity.key] || ""}
+                        onChange={(e) =>
+                          handleActivityToleranceChange(
+                            activity.key,
+                            e.target.value
+                          )
+                        }
+                      />
+                    </div>
+                  ))}
+
+                </div>
+              ))}
+
             </div>
+
           )}
 
           </div>

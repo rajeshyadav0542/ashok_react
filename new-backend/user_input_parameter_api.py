@@ -97,39 +97,55 @@ def refresh_meta_parameters():
         "message": "STRATIFICATION_INPUT_FILEDS.xlsx updated successfully"
     }
 
+# new code changes
+
+from collections import defaultdict
 
 @router.get("/user-meta-parameters")
 def get_user_meta_parameters():
     BASE_DIR = Path(__file__).resolve().parent
     PROJECT_ROOT = BASE_DIR.parent
 
-    file_path = PROJECT_ROOT / "public" / "metadata" / "Final_results.xlsx"
+    file_path = PROJECT_ROOT / "public" / "metadata" / "strat_meta.xlsx"
 
     if not file_path.exists():
         raise HTTPException(
             status_code=404,
-            detail="Final_results.xlsx not found"
+            detail="strat_meta.xlsx not found"
         )
 
     try:
         df = pd.read_excel(
             file_path,
-            sheet_name="User_Meta_Parameters",
+            sheet_name="strat_meta",
             engine="openpyxl"
         )
 
-        # Replace NaN values with None for JSON serialization
+        # Clean column names
+        df.columns = df.columns.str.strip()
+
+        # Replace NaN values
         df = df.where(pd.notnull(df), None)
+
+        # Meta_tag as key, Actual_column_name as values
+        meta_mapping = defaultdict(list)
+
+        for _, row in df.iterrows():
+            meta_tag = row["Meta_tag"]
+            actual_column = row["Actual_column_name"]
+
+            if meta_tag and actual_column:
+                meta_mapping[meta_tag].append(actual_column)
 
         return {
             "status": "success",
-            "data": df.to_dict(orient="records")
+            "data": dict(meta_mapping)
         }
 
     except ValueError:
         raise HTTPException(
             status_code=404,
-            detail="Sheet 'User_Meta_Parameters' not found"
+            detail="Sheet 'strat_meta' not found"
         )
 
     except Exception as e:
@@ -139,7 +155,7 @@ def get_user_meta_parameters():
         )
 
 @router.get("/avg-claim-control")
-def get_user_meta_parameters():
+def get_avg_claim_control():
     BASE_DIR = Path(__file__).resolve().parent
     PROJECT_ROOT = BASE_DIR.parent
 

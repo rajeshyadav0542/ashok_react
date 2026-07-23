@@ -10,13 +10,11 @@ interface SegmentData {
   Test_Delta: number;
   Ctrl_Delta: number;
   Double_Delta: number;
-  Lift_Pct: number;
-  P_Value: number;
+  Lift_Pct: number | null;
+  P_Value: number | null;
   Significance: string;
 }
 
-const formatValue = (value: number | string) =>
-  typeof value === "number" ? value.toFixed(3) : value;
 
 const SegmentTable: React.FC = () => {
   const [data, setData] = useState<SegmentData | null>(null);
@@ -31,6 +29,8 @@ const SegmentTable: React.FC = () => {
         }
 
         const result = await response.json();
+        console.log(result);
+        console.log(result.data);
         setData(result.data);
       } catch (error) {
         console.error("Unable to load dashboard data", error);
@@ -44,7 +44,7 @@ const SegmentTable: React.FC = () => {
     return (
       <Card>
         <CardContent>
-          <div className="text-center py-8">Loading...</div>
+          <div className="text-center py-8">Loading... </div>
         </CardContent>
       </Card>
     );
@@ -55,7 +55,7 @@ const SegmentTable: React.FC = () => {
       <div>
         <Card className="h-44 flex flex-col items-center justify-center text-center shadow-md rounded-xl">
           <h4 className="text-2xl font-bold text-blue-700">
-            {formatValue(data.Lift_Pct)}%
+            {data.Lift_Pct !== null ? `${data.Lift_Pct}%` : "N/A"}
           </h4>
           <p className="mt-2 text-sm text-gray-600">Lift for Test vs Control</p>
           <p className="mt-3 font-semibold text-green-600">
@@ -69,7 +69,7 @@ const SegmentTable: React.FC = () => {
           <h4 className="text-lg font-semibold">Test Delta</h4>
           <p className="mt-2 text-sm text-gray-600">For campaign vs Pre Period</p>
           <p className="mt-4 text-2xl font-bold text-slate-700">
-            {formatValue(data.Test_Delta)}
+            {data?.Test_Delta}
             <span className="mt-2 text-sm text-gray-600"> avg claims / HCP</span>
           </p>
         </Card>
@@ -80,7 +80,7 @@ const SegmentTable: React.FC = () => {
           <h4 className="text-lg font-semibold">Control Delta</h4>
           <p className="mt-2 text-sm text-gray-600">For campaign vs Pre Period</p>
           <p className="mt-4 text-2xl font-bold text-slate-700">
-            {formatValue(data.Ctrl_Delta)}
+            {data.Ctrl_Delta}
             <span className="mt-2 text-sm text-gray-600"> avg claims / HCP</span>
           </p>
         </Card>
@@ -91,7 +91,7 @@ const SegmentTable: React.FC = () => {
           <h4 className="text-lg font-semibold">Double Delta</h4>
           <p className="mt-2 text-sm text-gray-600">Difference b/w Test and Control Delta</p>
           <p className="mt-4 text-2xl font-bold text-slate-700">
-            {formatValue(data.Double_Delta)}
+            {data.Double_Delta}
             <span className="mt-2 text-sm text-gray-600"> avg claims / HCP</span>
           </p>
         </Card>
@@ -101,7 +101,7 @@ const SegmentTable: React.FC = () => {
         <Card className="h-44 flex flex-col items-center justify-center text-center shadow-md rounded-xl">
           <h4 className="text-lg font-semibold">P Value</h4>
           <p className="mt-4 text-2xl font-bold text-slate-700">
-            {formatValue(data.P_Value)}
+            {data.P_Value ?? "N/A"}
           </p>
         </Card>
       </div>
